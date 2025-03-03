@@ -1,21 +1,58 @@
 """
-This code is for fetching all the games by using lambda function and api gateway
+Lambda function to fetch game details using API Gateway path parameters.
 """
+import os
 import json
 import requests
 
-#This is the lambda function to get the list of games. This function is also used for searching games
-
 def lambda_handler(event, context):
-  
-    params = event['params'];
-    
-    response = requests.get(f"https://api.rawg.io/api/games/{params['game_slug']}?key=e648abe0c449445c8b7373607e545a31")
-    
-    return {
-        'statusCode': response.status_code,
-        'body': response.json()
-    }
+    """
+    Fetches game details from RAWG API based on the dynamic path parameter `{game_slug}`.
+    """
+    api_key = os.environ.get("RAWG_API_KEY")  # Use environment variable for security
+    base_url = "https://api.rawg.io/api/games"
+
+    # Get game_slug from API Gateway path parameters
+    game_slug = event.get("pathParameters", {}).get("game_slug")
+    # Validate input
+    if not game_slug:
+        return {
+            "statusCode": 400,
+            "headers": {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET",
+                "Access-Control-Allow-Headers": "Content-Type"
+            },
+            "body": json.dumps({"error": "Missing required path parameter: game_slug"})
+        }
+
+    # Construct API URL
+    url = f"{base_url}/{game_slug}?key={api_key}"
+
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  # Raises error for 4xx/5xx responses
+
+        return {
+            "statusCode": 200,
+            "headers": {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET",
+                "Access-Control-Allow-Headers": "Content-Type"
+            },
+            "body": json.dumps(response.json())  # Ensure response is serialized properly
+        }
+
+    except requests.exceptions.RequestException as e:
+        return {
+            "statusCode": 500,
+            "headers": {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET",
+                "Access-Control-Allow-Headers": "Content-Type"
+            },
+            "body": json.dumps({"error": str(e)})
+        }
 
 
 """
